@@ -1,0 +1,390 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <iomanip>
+#include <limits>
+
+using namespace std;
+
+// Class definition to encapsulate Student details and behaviors
+class Student
+{
+private:
+    int rollNumber;
+    string name;
+    string course;
+    double gpa;
+
+public:
+    // Setters
+    void setRollNumber(int r) { rollNumber = r; }
+    void setName(string n) { name = n; }
+    void setCourse(string c) { course = c; }
+    void setGpa(double g) { gpa = g; }
+
+    // Getters
+    int getRollNumber() const { return rollNumber; }
+    string getName() const { return name; }
+    string getCourse() const { return course; }
+    double getGpa() const { return gpa; }
+
+    // Read student data from standard console input
+    void acceptDetails()
+    {
+        cout << "Enter Roll Number (Integer): ";
+        while (!(cin >> rollNumber))
+        {
+            cout << "Invalid input. Enter a valid integer for Roll Number: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+        cin.ignore(); // Clear newline buffer
+
+        cout << "Enter Name: ";
+        getline(cin, name);
+
+        cout << "Enter Course: ";
+        getline(cin, course);
+
+        cout << "Enter GPA (0.0 - 10.0): ";
+        while (!(cin >> gpa) || gpa < 0.0 || gpa > 10.0)
+        {
+            cout << "Invalid input. Enter a valid GPA between 0.0 and 10.0: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+    }
+
+    // Print student records formatted as a clean table row
+    void displayRow() const
+    {
+        cout << left << setw(15) << rollNumber
+             << setw(25) << name
+             << setw(20) << course
+             << setw(10) << fixed << setprecision(2) << gpa << endl;
+    }
+};
+
+// Global File Helper Functions
+void addStudent();
+void displayAllStudents();
+void searchStudent();
+void updateStudent();
+void deleteStudent();
+bool checkDuplicateRoll(int roll);
+
+int main()
+{
+    int choice;
+
+    while (true)
+    {
+        cout << "\n=========================================\n";
+        cout << "|        STUDENT MANAGEMENT SYSTEM      |\n";
+        cout << "=========================================\n";
+        cout << "1. Add Student Record\n";
+        cout << "2. Display All Student Records\n";
+        cout << "3. Search Student Record\n";
+        cout << "4. Update Student Record\n";
+        cout << "5. Delete Student Record\n";
+        cout << "6. Exit Application\n";
+        cout << "-----------------------------------------\n";
+        cout << "Select an option (1-6): ";
+
+        if (!(cin >> choice))
+        {
+            cout << "Invalid entry! Please enter a number.\n";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
+        }
+
+        switch (choice)
+        {
+        case 1:
+            addStudent();
+            break;
+        case 2:
+            displayAllStudents();
+            break;
+        case 3:
+            searchStudent();
+            break;
+        case 4:
+            updateStudent();
+            break;
+        case 5:
+            deleteStudent();
+            break;
+        case 6:
+            cout << "\nExiting application safely. Data preserved.\n";
+            return 0;
+        default:
+            cout << "Invalid choice! Please select an option between 1 and 6.\n";
+        }
+    }
+    return 0;
+}
+
+// 1. CREATE: Append new student records to file
+void addStudent()
+{
+    Student s;
+    s.acceptDetails();
+
+    if (checkDuplicateRoll(s.getRollNumber()))
+    {
+        cout << "\nError: A student with Roll Number " << s.getRollNumber() << " already exists!\n";
+        return;
+    }
+
+    ofstream outFile("students.txt", ios::app);
+    if (!outFile)
+    {
+        cout << "Error closing file system database.\n";
+        return;
+    }
+
+    // Write record separated by custom delimiter format
+    outFile << s.getRollNumber() << ","
+            << s.getName() << ","
+            << s.getCourse() << ","
+            << s.getGpa() << "\n";
+
+    outFile.close();
+    cout << "\nRecord added successfully!\n";
+}
+
+// 2. READ: Stream and display all records
+void displayAllStudents()
+{
+    ifstream inFile("students.txt");
+    if (!inFile)
+    {
+        cout << "\nNo records found. The database file is currently empty.\n";
+        return;
+    }
+
+    string rollStr, name, course, gpaStr;
+    bool recordsExist = false;
+
+    cout << "\n----------------------------------------------------------------------\n";
+    cout << left << setw(15) << "Roll Number" << setw(25) << "Name" << setw(20) << "Course" << setw(10) << "GPA" << endl;
+    cout << "----------------------------------------------------------------------\n";
+
+    while (getline(inFile, rollStr, ',') &&
+           getline(inFile, name, ',') &&
+           getline(inFile, course, ',') &&
+           getline(inFile, gpaStr, '\n'))
+    {
+
+        recordsExist = true;
+        Student s;
+        s.setRollNumber(stoi(rollStr));
+        s.setName(name);
+        s.setCourse(course);
+        s.setGpa(stod(gpaStr));
+        s.displayRow();
+    }
+
+    inFile.close();
+
+    if (!recordsExist)
+    {
+        cout << "No active records found inside 'students.txt'.\n";
+    }
+    cout << "----------------------------------------------------------------------\n";
+}
+
+// 3. SEARCH: Query specific record by unique key
+void searchStudent()
+{
+    int searchRoll;
+    cout << "Enter the Roll Number of the student you want to find: ";
+    cin >> searchRoll;
+
+    ifstream inFile("students.txt");
+    if (!inFile)
+    {
+        cout << "\nNo database file initialized yet.\n";
+        return;
+    }
+
+    string rollStr, name, course, gpaStr;
+    bool found = false;
+
+    while (getline(inFile, rollStr, ',') &&
+           getline(inFile, name, ',') &&
+           getline(inFile, course, ',') &&
+           getline(inFile, gpaStr, '\n'))
+    {
+
+        if (stoi(rollStr) == searchRoll)
+        {
+            found = true;
+            cout << "\n--- Student Found ---\n";
+            cout << "Roll Number : " << rollStr << "\n";
+            cout << "Name        : " << name << "\n";
+            cout << "Course      : " << course << "\n";
+            cout << "GPA         : " << fixed << setprecision(2) << stod(gpaStr) << "\n";
+            break;
+        }
+    }
+    inFile.close();
+
+    if (!found)
+    {
+        cout << "\nStudent with Roll Number " << searchRoll << " not found.\n";
+    }
+}
+
+// 4. UPDATE: Modify properties of a record matching structural parameters
+void updateStudent()
+{
+    int targetRoll;
+    cout << "Enter the Roll Number of the student you wish to update: ";
+    cin >> targetRoll;
+
+    ifstream inFile("students.txt");
+    ofstream tempFile("temp.txt");
+
+    if (!inFile)
+    {
+        cout << "\nDatabase file missing. Create records first.\n";
+        return;
+    }
+
+    string rollStr, name, course, gpaStr;
+    bool modified = false;
+
+    while (getline(inFile, rollStr, ',') &&
+           getline(inFile, name, ',') &&
+           getline(inFile, course, ',') &&
+           getline(inFile, gpaStr, '\n'))
+    {
+
+        if (stoi(rollStr) == targetRoll)
+        {
+            modified = true;
+            Student updatedStudent;
+            updatedStudent.setRollNumber(targetRoll);
+
+            cout << "\nExisting Record Data: Name=" << name << ", Course=" << course << ", GPA=" << gpaStr << "\n";
+            cout << "Enter New Information Below:\n";
+
+            // Re-accept updated detail properties
+            cin.ignore();
+            string newName, newCourse;
+            double newGpa;
+
+            cout << "Enter New Name: ";
+            getline(cin, newName);
+            cout << "Enter New Course: ";
+            getline(cin, newCourse);
+            cout << "Enter New GPA (0.0 - 10.0): ";
+            while (!(cin >> newGpa) || newGpa < 0.0 || newGpa > 10.0)
+            {
+                cout << "Invalid input. Enter a valid GPA: ";
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            }
+
+            tempFile << targetRoll << "," << newName << "," << newCourse << "," << newGpa << "\n";
+        }
+        else
+        {
+            // Keep unchanged lines intact
+            tempFile << rollStr << "," << name << "," << course << "," << gpaStr << "\n";
+        }
+    }
+
+    inFile.close();
+    tempFile.close();
+
+    remove("students.txt");
+    rename("temp.txt", "students.txt");
+
+    if (modified)
+    {
+        cout << "\nRecord updated successfully!\n";
+    }
+    else
+    {
+        cout << "\nStudent record with Roll Number " << targetRoll << " was not found.\n";
+    }
+}
+
+// 5. DELETE: Remove individual entries safely
+void deleteStudent()
+{
+    int targetRoll;
+    cout << "Enter the Roll Number of the student you wish to delete: ";
+    cin >> targetRoll;
+
+    ifstream inFile("students.txt");
+    ofstream tempFile("temp.txt");
+
+    if (!inFile)
+    {
+        cout << "\nDatabase missing. No file available to delete entries from.\n";
+        return;
+    }
+
+    string rollStr, name, course, gpaStr;
+    bool deleted = false;
+
+    while (getline(inFile, rollStr, ',') &&
+           getline(inFile, name, ',') &&
+           getline(inFile, course, ',') &&
+           getline(inFile, gpaStr, '\n'))
+    {
+
+        // Write all lines to temporary file EXCEPT the target row
+        if (stoi(rollStr) == targetRoll)
+        {
+            deleted = true;
+        }
+        else
+        {
+            tempFile << rollStr << "," << name << "," << course << "," << gpaStr << "\n";
+        }
+    }
+
+    inFile.close();
+    tempFile.close();
+
+    remove("students.txt");
+    rename("temp.txt", "students.txt");
+
+    if (deleted)
+    {
+        cout << "\nRecord deleted successfully.\n";
+    }
+    else
+    {
+        cout << "\nStudent record with Roll Number " << targetRoll << " was not found.\n";
+    }
+}
+
+// Check validation constraint for primary keys
+bool checkDuplicateRoll(int roll)
+{
+    ifstream inFile("students.txt");
+    if (!inFile)
+        return false;
+
+    string rollStr, dummy;
+    while (getline(inFile, rollStr, ',') &&
+           getline(inFile, dummy, ',') &&
+           getline(inFile, dummy, ',') &&
+           getline(inFile, dummy, '\n'))
+    {
+        if (stoi(rollStr) == roll)
+        {
+            inFile.close();
+            return true;
+        }
+    }
+    inFile.close();
+    return false;
+}
